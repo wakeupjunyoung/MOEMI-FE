@@ -94,7 +94,8 @@ cat > .git/PR_BODY.md <<'BODY'
 - 기상청 API 서비스키 관리 방식 (local.properties → BuildConfig)
 BODY
 
-wsl.exe -e gh pr create --repo wakeupjunyoung/MOEMI-FE --base main --head "$BRANCH" \
+# MSYS_NO_PATHCONV=1: Git Bash가 /mnt/c/... 를 C:/Program Files/Git/mnt/c/... 로 바꿔버리는 것을 막는다
+MSYS_NO_PATHCONV=1 wsl.exe -e gh pr create --repo wakeupjunyoung/MOEMI-FE --base main --head "$BRANCH" \
   --title "feat: 생활수치 캘린더 화면 구현" \
   --body-file "/mnt/c/Users/t0108/Desktop/all/android1/.git/PR_BODY.md"
 rm .git/PR_BODY.md
