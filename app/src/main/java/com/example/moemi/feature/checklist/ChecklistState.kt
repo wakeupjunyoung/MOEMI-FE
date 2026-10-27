@@ -69,7 +69,10 @@ class ChecklistState(val schedules: List<Schedule>, private val scope: Coroutine
 
     fun scheduleTitle(id: Long) = schedules.firstOrNull { it.id == id }?.title ?: "연결된 일정 없음"
 
-    /** 날짜의 일정별 체크리스트를 연다. 처음 여는 일정이면 서버가 그 지역 생활수치로 추천 항목을 넣어 만든다. */
+    /**
+     * 날짜의 일정별 체크리스트를 연다. 처음 여는 일정이면 서버가 그 지역 생활수치로 추천 항목을 넣어 만든다.
+     * 이미 있던 체크리스트는 서버가 추천을 다시 계산하지 않으므로, 필요하면 여기서 추천 갱신을 요청한다.
+     */
     fun load(date: LocalDate, regionCode: String) {
         this.date = date
         this.regionCode = regionCode
@@ -78,8 +81,9 @@ class ChecklistState(val schedules: List<Schedule>, private val scope: Coroutine
             try {
                 checklists = schedules.associate { s ->
                     val opened = api.openChecklist(OpenChecklistRequest(date.toString(), s.id, regionCode))
-                    // 예전에 다른 지역 기준으로 만든 체크리스트면 지금 지역으로 추천을 다시 받는다.
-                    s.id to if (opened.regionCode != regionCode) api.refreshRecommendations(opened.id, regionCode) else opened
+                    // 다른 지역 기준이거나, 예전에 추천을 못 받았으면(조회 실패·예보 없음) 지금 다시 받는다.
+                    val stale = opened.regionCode != regionCode || opened.recommendationStatus != RecommendationStatus.OK
+                    s.id to if (stale) api.refreshRecommendations(opened.id, regionCode) else opened
                 }
             } finally {
                 loading = false
