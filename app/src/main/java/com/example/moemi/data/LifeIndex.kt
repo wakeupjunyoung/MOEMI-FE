@@ -10,10 +10,12 @@ import com.example.moemi.ui.theme.GoodFg
 import com.example.moemi.ui.theme.NormalBg
 import com.example.moemi.ui.theme.NormalDot
 import com.example.moemi.ui.theme.NormalFg
+import kotlinx.serialization.Serializable
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
-/** 사용자가 이해하기 쉬운 상태 단계 (기능 1) */
+/** 사용자가 이해하기 쉬운 상태 단계 (기능 1). 서버 Level과 이름이 같고, 좋은 것부터 나쁜 순서다. */
+@Serializable
 enum class Level(val label: String, val dot: Color, val badgeBg: Color, val badgeFg: Color) {
     GOOD("양호", GoodDot, GoodBg, GoodFg),
     NORMAL("보통", NormalDot, NormalBg, NormalFg),
@@ -74,6 +76,7 @@ data class DailyLifeIndex(
     val overall: Level get() = items.maxOf { it.level }
 }
 
+@Serializable
 enum class DayAvailability { PAST, AVAILABLE, NO_DATA }
 
 /**

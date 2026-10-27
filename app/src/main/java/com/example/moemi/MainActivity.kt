@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.moemi.data.LifeIndexRepository
 import com.example.moemi.data.recommendationsFor
+import com.example.moemi.data.remote.MoemiApi
 import com.example.moemi.feature.calendar.CalendarScreen
 import com.example.moemi.feature.checklist.ChecklistScreen
 import com.example.moemi.feature.checklist.ChecklistState
@@ -34,6 +35,7 @@ import java.time.LocalDate
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        MoemiApi.init(applicationContext)
         // 밝은 배경이므로 상태바/내비게이션바 아이콘을 어둡게
         val transparent = android.graphics.Color.TRANSPARENT
         enableEdgeToEdge(
