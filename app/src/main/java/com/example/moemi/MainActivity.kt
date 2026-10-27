@@ -20,6 +20,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.moemi.data.LifeIndexRepository
 import com.example.moemi.data.remote.MoemiApi
 import com.example.moemi.feature.calendar.CalendarScreen
 import com.example.moemi.feature.checklist.ChecklistScreen
@@ -53,12 +54,13 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MoemiApp() {
     var tab by rememberSaveable { mutableStateOf(AppTab.CALENDAR) }
+    // 캘린더에서 고른 지역의 생활수치로 체크리스트 추천도 받는다.
+    var region by rememberSaveable { mutableStateOf(LifeIndexRepository.DEFAULT_REGION) }
     val scope = rememberCoroutineScope()
 
     // 체크리스트는 탭을 옮겨 다녀도 유지되도록 여기서 들고 있는다.
-    // 추천 기준 지역은 광주 광산구(기상청 지역번호)로 둔다.
     val checklist = remember { ChecklistState(ChecklistState.sampleSchedules, scope) }
-    LaunchedEffect(Unit) { checklist.load(LocalDate.now(), "1233000000") }
+    LaunchedEffect(region) { checklist.load(LocalDate.now(), region.code) }
 
     Scaffold(
         containerColor = Background,
@@ -67,7 +69,7 @@ fun MoemiApp() {
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             when (tab) {
-                AppTab.CALENDAR -> CalendarScreen()
+                AppTab.CALENDAR -> CalendarScreen(region, onRegionChange = { region = it })
                 AppTab.SCHEDULE -> ChecklistScreen(checklist, onBack = { tab = AppTab.CALENDAR })
                 AppTab.MAP -> HazardMapScreen()
                 AppTab.HOME, AppTab.BUS -> ComingSoon(tab.label)
