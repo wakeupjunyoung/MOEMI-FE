@@ -11,15 +11,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.moemi.data.LifeIndexRepository
-import com.example.moemi.data.recommendationsFor
 import com.example.moemi.data.remote.MoemiApi
 import com.example.moemi.feature.calendar.CalendarScreen
 import com.example.moemi.feature.checklist.ChecklistScreen
@@ -53,13 +53,12 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MoemiApp() {
     var tab by rememberSaveable { mutableStateOf(AppTab.CALENDAR) }
+    val scope = rememberCoroutineScope()
 
     // 체크리스트는 탭을 옮겨 다녀도 유지되도록 여기서 들고 있는다.
-    val checklist = remember {
-        val today = LocalDate.now()
-        val day = LifeIndexRepository.load(LifeIndexRepository.regions.first(), today, "14:00")[today]
-        ChecklistState.sample(recommendationsFor(day))
-    }
+    // 추천 기준 지역은 광주 광산구(기상청 지역번호)로 둔다.
+    val checklist = remember { ChecklistState(ChecklistState.sampleSchedules, scope) }
+    LaunchedEffect(Unit) { checklist.load(LocalDate.now(), "1233000000") }
 
     Scaffold(
         containerColor = Background,
