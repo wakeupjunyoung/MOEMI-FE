@@ -1,0 +1,42 @@
+name: 버그 리포트
+description: 잘못 동작하는 것을 알립니다.
+title: "[버그] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 무슨 문제인가요?
+      description: 기대한 동작과 실제 동작을 적어 주세요. 스크린샷이 있으면 붙여 주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 재현 방법
+      placeholder: |
+        1. 하단 탭에서 '캘린더' 선택
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: 기기 / 안드로이드 버전
+      placeholder: "예: 에뮬레이터 Pixel 8 (API 35), 갤럭시 S23 (Android 14)"
+    validations:
+      required: true
+  - type: dropdown
+    id: server
+    attributes:
+      label: 연결한 서버
+      options:
+        - 로컬 백엔드
+        - 배포 서버 (Cloudtype)
+        - 예시 데이터 (서버 없이)
+  - type: textarea
+    id: logs
+    attributes:
+      label: 로그 (Logcat 등)
+      description: 키·비밀번호는 지우고 붙여 주세요.
+      render: text
