@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -42,8 +43,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.moemi.data.LifeIndexRepository
-import com.example.moemi.data.recommendationsFor
 import com.example.moemi.ui.components.AppCard
 import com.example.moemi.ui.components.AppChip
 import com.example.moemi.ui.components.AppIcons
@@ -62,9 +61,9 @@ import com.example.moemi.ui.theme.TextPrimary
 import com.example.moemi.ui.theme.TextSecondary
 import com.example.moemi.ui.theme.TextTertiary
 import com.example.moemi.ui.theme.Track
-import java.time.LocalDate
 
-private const val ALL = "all"
+/** 통합 보기. 일정 id는 1부터라 겹치지 않는다. */
+private const val ALL = -1L
 
 /** 화면에 그릴 한 줄. 통합 보기에서는 여러 일정의 같은 추천 항목이 한 줄로 묶인다. */
 private data class RowUi(
@@ -140,6 +139,10 @@ fun ChecklistScreen(state: ChecklistState, onBack: () -> Unit, modifier: Modifie
             AppChip("통합 보기", scope == ALL, { scope = ALL })
         }
 
+        state.error?.let { message ->
+            ErrorBanner(message, onRetry = state::reload, Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp))
+        }
+
         // 진행률
         ProgressCard(done, total, Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp))
 
@@ -147,6 +150,7 @@ fun ChecklistScreen(state: ChecklistState, onBack: () -> Unit, modifier: Modifie
         SectionTitle("추천 항목", "오늘 생활수치 기준")
         AppCard(Modifier.padding(horizontal = 16.dp)) {
             when {
+                !state.loaded -> EmptyText(if (state.loading) "불러오는 중…" else "체크리스트를 불러오지 못했어요")
                 state.recommendationFailed -> EmptyText("추천 정보를 불러오지 못했습니다.\n아래에서 준비물을 직접 추가할 수 있어요.")
                 recommended.isEmpty() -> EmptyText("오늘은 추천할 준비물이 없어요")
                 else -> recommended.forEachIndexed { i, row ->
@@ -219,6 +223,27 @@ private fun ProgressCard(done: Int, total: Int, modifier: Modifier = Modifier) {
                     .background(Primary)
             )
         }
+    }
+}
+
+@Composable
+private fun ErrorBanner(message: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(CautionBg)
+            .padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(message, modifier = Modifier.weight(1f), fontSize = 13.sp, color = CautionFg)
+        Text(
+            "다시 시도",
+            modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onRetry).padding(8.dp),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = CautionFg
+        )
     }
 }
 
@@ -332,7 +357,7 @@ private fun NameInputDialog(dialog: NameDialog, onDismiss: () -> Unit) {
 @Preview(showBackground = true, widthDp = 390, heightDp = 780)
 @Composable
 private fun ChecklistScreenPreview() {
-    val today = LocalDate.now()
-    val day = LifeIndexRepository.load(LifeIndexRepository.regions.first(), today, "14:00")[today]
-    MoemiTheme { ChecklistScreen(ChecklistState.sample(recommendationsFor(day)), onBack = {}) }
+    val scope = rememberCoroutineScope()
+    val state = remember { ChecklistState(ChecklistState.sampleSchedules, scope) }
+    MoemiTheme { ChecklistScreen(state, onBack = {}) }
 }
