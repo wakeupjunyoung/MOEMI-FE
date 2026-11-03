@@ -30,7 +30,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -63,6 +65,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.moemi.data.GeoPoint
+import com.example.moemi.data.HazardRepository
+import com.example.moemi.data.remote.HazardResponse
+import com.example.moemi.data.remote.HazardSearchResponse
+import com.example.moemi.data.remote.HazardSearchStatus
+import com.example.moemi.data.remote.HazardState
+import com.example.moemi.data.remote.MoemiApi
 import com.example.moemi.ui.components.AppChip
 import com.example.moemi.ui.components.AppIcons
 import com.example.moemi.ui.components.StatusBadge
@@ -91,18 +100,25 @@ import com.example.moemi.ui.theme.SheetHandle
 import com.example.moemi.ui.theme.TextPrimary
 import com.example.moemi.ui.theme.TextSecondary
 import com.example.moemi.ui.theme.TextTertiary
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import kotlin.math.cos
 import kotlin.math.roundToInt
 
+/** 서버 HazardType과 이름이 같다. */
 enum class HazardType(val label: String, val short: String, val pin: Color, val badgeBg: Color, val badgeFg: Color) {
     CONSTRUCTION("공사", "공", ConstructionPin, ConstructionBg, ConstructionFg),
     CONTROL("통제", "통", CautionDot, CautionBg, CautionFg),
     ACCIDENT("사고", "사", AccidentPin, AccidentBg, AccidentFg),
+    OTHER("기타", "기", Primary, PrimarySoft, Primary),
 }
 
 /** x, y는 디자인(390 폭) 기준 좌표로, 핀의 뾰족한 끝 위치 */
 data class Hazard(
-    val id: Int,
+    val id: String,
     val type: HazardType,
     val title: String,
     val distanceM: Int,
@@ -112,25 +128,60 @@ data class Hazard(
     val y: Float,
 )
 
-private val sampleHazards = listOf(
-    Hazard(1, HazardType.CONSTRUCTION, "하남대로 도로 굴착 공사", 350, "9.15 ~ 9.30 · 진행 중", false, 122f, 262f),
-    Hazard(2, HazardType.CONTROL, "광산구청 앞 차로 통제", 620, "오늘 10:00 ~ 18:00", false, 282f, 366f),
-    Hazard(3, HazardType.ACCIDENT, "교차로 추돌 사고 처리 중", 900, "13:40 발생", false, 300f, 222f),
-    Hazard(4, HazardType.CONSTRUCTION, "수완동 보도 정비", 980, "9.10 ~ 9.18 · 종료됨", true, 80f, 404f),
-)
-
 private val radiusOptions = listOf(500, 1000, 2000)
 private const val DESIGN_WIDTH = 390f
 private val ME = Offset(200f, 300f)
 
+/** 지도 그림의 축척: 1km = 132 (디자인 좌표) */
+private const val UNITS_PER_METER = 0.132
+private const val METERS_PER_DEGREE = 111_320.0
+
+private val hourMinute = DateTimeFormatter.ofPattern("HH:mm")
+
 private fun formatDistance(m: Int) = if (m < 1000) "${m}m" else "%.1fkm".format(m / 1000f)
+
+/** 서버 응답을 지도에 그릴 모양으로. 위경도는 기준 위치(ME)에서 떨어진 거리만큼 옮겨 찍는다. */
+private fun HazardResponse.toUi(center: GeoPoint, today: LocalDate): Hazard {
+    val eastM = (lng - center.lng) * METERS_PER_DEGREE * cos(Math.toRadians(center.lat))
+    val northM = (lat - center.lat) * METERS_PER_DEGREE
+    return Hazard(
+        id = id,
+        type = HazardType.entries.firstOrNull { it.name == type } ?: HazardType.OTHER,
+        title = title,
+        distanceM = distanceM,
+        period = periodText(startAt?.let(LocalDateTime::parse), endAt?.let(LocalDateTime::parse), state, today),
+        ended = state == HazardState.ENDED,
+        x = ME.x + (eastM * UNITS_PER_METER).toFloat(),
+        y = ME.y - (northM * UNITS_PER_METER).toFloat(),
+    )
+}
+
+/** "9.15 ~ 9.30 · 진행 중", "오늘 10:00 ~ 18:00 · 진행 중", "13:40 발생 · 진행 중" */
+private fun periodText(start: LocalDateTime?, end: LocalDateTime?, state: HazardState, today: LocalDate): String {
+    fun day(t: LocalDateTime) = "${t.monthValue}.${t.dayOfMonth}"
+    fun dayTime(t: LocalDateTime) = if (t.toLocalDate() == today) t.format(hourMinute) else "${day(t)} ${t.format(hourMinute)}"
+    val period = when {
+        start != null && end != null && start.toLocalDate() == end.toLocalDate() ->
+            (if (start.toLocalDate() == today) "오늘" else day(start)) + " ${start.format(hourMinute)} ~ ${end.format(hourMinute)}"
+        start != null && end != null -> "${day(start)} ~ ${day(end)}"
+        start != null -> "${dayTime(start)} 발생"
+        end != null -> "~ ${day(end)}"
+        else -> null
+    }
+    val stateLabel = when (state) {
+        HazardState.ACTIVE -> "진행 중"
+        HazardState.SCHEDULED -> "예정"
+        HazardState.ENDED -> "종료됨"
+    }
+    return listOfNotNull(period, stateLabel).joinToString(" · ")
+}
 
 /** 기능 3 — 지도 기반 주변 위험 알리미 */
 @Composable
 fun HazardMapScreen(modifier: Modifier = Modifier) {
     var typeFilter by rememberSaveable { mutableStateOf<HazardType?>(null) }
     var radius by rememberSaveable { mutableStateOf(1000) }
-    var selectedId by rememberSaveable { mutableStateOf<Int?>(1) }
+    var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
     var query by rememberSaveable { mutableStateOf("") }
     var panTarget by remember { mutableStateOf(Offset.Zero) }
     val pan by animateOffsetAsState(panTarget, label = "pan")
@@ -139,7 +190,28 @@ fun HazardMapScreen(modifier: Modifier = Modifier) {
     val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
 
-    val visible = sampleHazards
+    val today = remember { LocalDate.now() }
+    val center = HazardRepository.DEFAULT_CENTER
+    var result by remember { mutableStateOf<HazardSearchResponse?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var reloadCount by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(reloadCount) {
+        error = null
+        try {
+            // 반경 칩은 화면에서 거르므로 가장 넓은 반경으로 한 번만 받아 둔다.
+            result = HazardRepository.search(center, radiusOptions.max())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            error = MoemiApi.messageOf(e)
+        }
+    }
+    val hazards = remember(result) { result?.hazards.orEmpty().map { it.toUi(center, today) } }
+    val loading = result == null && error == null
+    val canRetry = error != null || result?.status == HazardSearchStatus.FAILED
+
+    val visible = hazards
         .filter { typeFilter == null || it.type == typeFilter }
         .filter { it.distanceM <= radius }
         .sortedWith(compareBy<Hazard> { it.ended }.thenBy { it.distanceM })
@@ -228,14 +300,36 @@ fun HazardMapScreen(modifier: Modifier = Modifier) {
             ) {
                 Text("주변 위험 정보 ${activeCount}건", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
-                Text("갱신 14:03", fontSize = 12.sp, color = TextTertiary)
+                Row(
+                    Modifier.clip(RoundedCornerShape(8.dp)).clickable(enabled = !loading) { reloadCount++ }.padding(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val fetchedAt = result?.fetchedAt?.let(LocalDateTime::parse)
+                    Text(
+                        if (loading) "불러오는 중…" else fetchedAt?.let { "갱신 ${it.format(hourMinute)}" } ?: "새로고침",
+                        fontSize = 12.sp,
+                        color = TextTertiary
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Icon(AppIcons.Refresh, "새로고침", tint = TextTertiary, modifier = Modifier.size(14.dp))
+                }
             }
             LazyColumn(Modifier.weight(1f), state = listState) {
                 if (visible.isEmpty()) {
                     item {
+                        val message = when {
+                            loading -> "불러오는 중…"
+                            error != null -> "$error\n눌러서 다시 시도"
+                            result?.status == HazardSearchStatus.FAILED -> "불러오지 못함 · 다시 시도"
+                            result?.status == HazardSearchStatus.UNSUPPORTED_REGION -> "이 지역은 아직 지원하지 않습니다"
+                            else -> "주변에 등록된 정보가 없습니다"
+                        }
                         Text(
-                            "주변에 등록된 정보가 없습니다",
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp),
+                            message,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(enabled = canRetry) { reloadCount++ }
+                                .padding(vertical = 40.dp),
                             textAlign = TextAlign.Center,
                             fontSize = 13.sp,
                             color = TextTertiary
@@ -247,7 +341,7 @@ fun HazardMapScreen(modifier: Modifier = Modifier) {
                 }
                 item {
                     Text(
-                        "출처: 광주광역시 열린데이터 · 원문 보기",
+                        "출처: ${result?.source ?: "국가교통정보센터 돌발상황정보"}",
                         modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 16.dp),
                         fontSize = 11.sp,
                         color = TextTertiary

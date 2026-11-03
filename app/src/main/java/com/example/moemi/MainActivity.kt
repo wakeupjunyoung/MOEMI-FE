@@ -22,6 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -30,7 +31,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.moemi.data.LifeIndexRepository
-import com.example.moemi.data.recommendationsFor
+import com.example.moemi.data.remote.MoemiApi
 import com.example.moemi.feature.bus.BusScreen
 import com.example.moemi.feature.calendar.CalendarScreen
 import com.example.moemi.feature.checklist.ChecklistScreen
@@ -57,6 +58,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        MoemiApi.init(applicationContext)
         // 밝은 배경이므로 상태바/내비게이션바 아이콘을 어둡게
         val transparent = android.graphics.Color.TRANSPARENT
         enableEdgeToEdge(
@@ -106,6 +108,9 @@ class OpenRequest(val target: String, val scheduleId: Long?, val checklistId: Lo
 @Composable
 fun MoemiApp(openRequest: OpenRequest? = null) {
     var tab by rememberSaveable { mutableStateOf(AppTab.CALENDAR) }
+    // 캘린더에서 고른 지역의 생활수치로 체크리스트 추천도 받는다.
+    var region by rememberSaveable { mutableStateOf(LifeIndexRepository.DEFAULT_REGION) }
+    val scope = rememberCoroutineScope()
 
     // 일정 탭 안에서 열려 있는 화면 (타임라인 → 새 일정 → 알림 설정, 일정 → 준비물)
     var scheduleRoute by rememberSaveable { mutableStateOf(ScheduleRoute.TIMELINE) }
@@ -130,11 +135,8 @@ fun MoemiApp(openRequest: OpenRequest? = null) {
     }
 
     // 체크리스트는 탭을 옮겨 다녀도 유지되도록 여기서 들고 있는다.
-    val checklist = remember {
-        val today = LocalDate.now()
-        val day = LifeIndexRepository.load(LifeIndexRepository.regions.first(), today, "14:00")[today]
-        ChecklistState.sample(recommendationsFor(day))
-    }
+    val checklist = remember { ChecklistState(ChecklistState.sampleSchedules, scope) }
+    LaunchedEffect(region) { checklist.load(LocalDate.now(), region.code) }
     val schedule = remember { ScheduleState(LocalDate.now()) }
 
     BackHandler(enabled = tab == AppTab.SCHEDULE && scheduleRoute != ScheduleRoute.TIMELINE) {
@@ -148,7 +150,7 @@ fun MoemiApp(openRequest: OpenRequest? = null) {
     ) { padding ->
         Box(Modifier.padding(padding).fillMaxSize()) {
             when (tab) {
-                AppTab.CALENDAR -> CalendarScreen()
+                AppTab.CALENDAR -> CalendarScreen(region, onRegionChange = { region = it })
                 AppTab.SCHEDULE -> when (scheduleRoute) {
                     ScheduleRoute.TIMELINE -> TimelineScreen(
                         schedule,
