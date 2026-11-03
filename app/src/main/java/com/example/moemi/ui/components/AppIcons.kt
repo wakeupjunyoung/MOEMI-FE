@@ -48,6 +48,47 @@ object AppIcons {
     }
     val Check by lazy { lineIcon("Check", listOf("M6 11.5L9.5 15L16.5 7.5"), strokeWidth = 2.2f, size = 22f) }
     val Close by lazy { lineIcon("Close", listOf("M7 7L17 17", "M17 7L7 17"), strokeWidth = 1.8f) }
+    val Plus by lazy { lineIcon("Plus", listOf("M12 5V19", "M5 12H19"), strokeWidth = 2.2f) }
+    val Star by lazy {
+        lineIcon(
+            "Star",
+            strokes = emptyList(),
+            fills = listOf("M12 2.5L14.8 8.6L21.5 9.3L16.5 13.8L17.9 20.5L12 17.1L6.1 20.5L7.5 13.8L2.5 9.3L9.2 8.6Z")
+        )
+    }
+    val Warning by lazy {
+        lineIcon(
+            "Warning",
+            strokes = listOf("M12 3.5L21.5 20H2.5Z", "M12 9.5V14"),
+            fills = listOf(circle(12f, 17f, 1f)),
+            strokeWidth = 1.6f
+        )
+    }
+    val Bell by lazy {
+        lineIcon("Bell", listOf("M6 16V11A6 6 0 0 1 18 11V16L20 18H4Z", "M10 21H14"), strokeWidth = 1.6f)
+    }
+    val Mic by lazy {
+        lineIcon("Mic", listOf(roundRect(9f, 3f, 6f, 11f, 3f), "M5.5 11A6.5 6.5 0 0 0 18.5 11", "M12 17.5V21"), strokeWidth = 1.6f)
+    }
+    val ArrowUp by lazy { lineIcon("ArrowUp", listOf("M12 19V5", "M6 11L12 5L18 11"), strokeWidth = 2.2f) }
+    val Sparkle by lazy {
+        lineIcon(
+            "Sparkle",
+            strokes = emptyList(),
+            fills = listOf("M12 2C13 8 16 11 22 12C16 13 13 16 12 22C11 16 8 13 2 12C8 11 11 8 12 2Z")
+        )
+    }
+    val DragHandle by lazy {
+        lineIcon(
+            "DragHandle",
+            strokes = emptyList(),
+            fills = listOf(
+                circle(9f, 6f, 1.5f), circle(15f, 6f, 1.5f),
+                circle(9f, 12f, 1.5f), circle(15f, 12f, 1.5f),
+                circle(9f, 18f, 1.5f), circle(15f, 18f, 1.5f),
+            )
+        )
+    }
 }
 
 private fun circle(cx: Float, cy: Float, r: Float) =
