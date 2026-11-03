@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 디버그 빌드에서만: 로컬 백엔드(http://10.0.2.2) 에 평문 HTTP 로 붙을 수 있게 한다.
+     배포 서버는 https 이므로 릴리스 빌드에는 넣지 않는다. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application android:usesCleartextTraffic="true" />
+
+</manifest>
