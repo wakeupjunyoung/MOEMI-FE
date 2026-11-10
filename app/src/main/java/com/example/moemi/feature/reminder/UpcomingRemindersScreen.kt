@@ -46,9 +46,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import com.example.moemi.BuildConfig
+import com.example.moemi.data.remote.DeviceId
 import com.example.moemi.reminder.ReminderNotifications
 import com.example.moemi.reminder.ReminderScheduler
-import com.example.moemi.reminder.ReminderStore
 import com.example.moemi.reminder.ReminderSync
 import com.example.moemi.reminder.UpcomingReminder
 import com.example.moemi.ui.components.AppCard
@@ -116,7 +116,7 @@ fun UpcomingRemindersScreen() {
             )
             if (BuildConfig.DEBUG) {
                 // 일정 화면이 생기기 전까지 Postman 으로 같은 X-Device-Id 의 일정을 만들어 시험한다.
-                Text("X-Device-Id: ${ReminderStore.deviceId(context)}", fontSize = 11.sp, color = TextTertiary)
+                Text("X-Device-Id: ${DeviceId.get(context)}", fontSize = 11.sp, color = TextTertiary)
             }
         }
 

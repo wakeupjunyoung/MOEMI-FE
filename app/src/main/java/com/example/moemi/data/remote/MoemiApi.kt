@@ -17,7 +17,6 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
 import java.io.IOException
-import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 /** MOEMI-BE 엔드포인트 (컨트롤러 기준) */
@@ -76,37 +75,33 @@ interface MoemiService {
 }
 
 object MoemiApi {
-    private const val DEVICE_ID_HEADER = "X-Device-Id"
-
     internal val json = Json {
         ignoreUnknownKeys = true
         coerceInputValues = true
     }
 
-    /** 로그인 기능이 생기기 전까지 체크리스트 주인을 구분하는 값. init 전에는 헤더 없이 보낸다. */
+    /** init 전에는 헤더 없이 보낸다. */
     @Volatile
     private var deviceId: String? = null
 
     fun init(context: Context) {
-        val prefs = context.getSharedPreferences("moemi", Context.MODE_PRIVATE)
-        deviceId = prefs.getString("device_id", null)
-            ?: UUID.randomUUID().toString().also { prefs.edit().putString("device_id", it).apply() }
+        deviceId = DeviceId.get(context)
     }
 
     private val client = OkHttpClient.Builder()
-        // Cloudtype 컨테이너가 깨어나는 데 시간이 걸릴 수 있어 넉넉히 둔다.
+        // 배포 서버가 깨어나는 데 시간이 걸릴 수 있어 넉넉히 둔다.
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .addInterceptor { chain ->
             val request = chain.request().newBuilder()
-            deviceId?.let { request.header(DEVICE_ID_HEADER, it) }
+            deviceId?.let { request.header(DeviceId.HEADER, it) }
             chain.proceed(request.build())
         }
         .build()
 
     val service: MoemiService by lazy {
         Retrofit.Builder()
-            .baseUrl(BuildConfig.API_BASE_URL)
+            .baseUrl(BuildConfig.BASE_URL)
             .client(client)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()

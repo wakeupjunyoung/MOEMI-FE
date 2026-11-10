@@ -32,7 +32,7 @@ body:
       label: 연결한 서버
       options:
         - 로컬 백엔드
-        - 배포 서버 (Cloudtype)
+        - 배포 서버 (GSM SV)
         - 예시 데이터 (서버 없이)
   - type: textarea
     id: logs

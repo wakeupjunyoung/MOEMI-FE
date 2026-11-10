@@ -1,6 +1,7 @@
 package com.example.moemi.reminder
 
 import android.content.Context
+import com.example.moemi.data.remote.DeviceId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,7 +38,7 @@ object ReminderSync {
         val appContext = context.applicationContext
         _state.value = _state.value.copy(syncing = true)
         try {
-            val reminders = ReminderApi.fetchUpcoming(ReminderStore.deviceId(appContext))
+            val reminders = ReminderApi.fetchUpcoming(DeviceId.get(appContext))
             val now = LocalDateTime.now(ZoneId.of("Asia/Seoul"))
             ReminderStore.saveSynced(appContext, reminders, now)
             ReminderScheduler.apply(appContext, reminders)
