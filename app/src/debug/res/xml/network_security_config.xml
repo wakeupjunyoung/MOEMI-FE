@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 디버그 빌드에서만: 배포 서버와 로컬 백엔드(http://10.0.2.2) 모두 평문 HTTP 로 붙을 수 있게 한다. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

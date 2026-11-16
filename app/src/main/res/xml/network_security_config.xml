@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 배포 서버(GSM SV)는 https 가 없어 이 도메인에만 평문 HTTP 를 허용한다.
+     디버그 빌드는 src/debug/res/xml 의 같은 이름 파일이 대신 쓰인다. -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">service.gsmsv.site</domain>
+    </domain-config>
+</network-security-config>
